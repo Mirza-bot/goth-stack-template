@@ -1,0 +1,14 @@
+{
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.13",
+    "@tailwindcss/typography": "^0.5.18",
+    "daisyui": "^5.1.13",
+    "tailwindcss": "^4.1.13"
+  },
+  "scripts": {
+    "dev:css": "npx @tailwindcss/cli -i ./assets/input.css -o ./public/style.css --watch",
+    "dev:air": "air -c .air.toml",
+    "dev:templ-local": "templ generate --watch --proxy='http://localhost:4000'",
+    "dev:templ-container": "templ generate --watch --proxy='http://app:4000' --proxybind=0.0.0.0 --proxyport=7331"
+  }
+}

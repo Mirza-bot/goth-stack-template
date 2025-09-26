@@ -1,0 +1,11 @@
+@import "tailwindcss" source(none);
+@plugin "@tailwindcss/typography";
+@source "../internal/views/**/*.templ";
+@plugin "daisyui" {
+  themes: sunset, nord;
+}
+
+body {
+  box-sizing: border-box;
+}
+

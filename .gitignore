@@ -1,0 +1,5 @@
+node_modules
+tmp/server
+tmp/build-errors.log
+.env
+.bin

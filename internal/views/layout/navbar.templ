@@ -1,0 +1,277 @@
+package layout
+
+import (
+	"app/internal/ui"
+	"sort"
+	"strings"
+)
+
+func isActivePath(current, href string) bool {
+	if href == "" {
+		return false
+	}
+	if href == "/" {
+		return current == "/"
+	}
+	return current == href || strings.HasPrefix(current, href+"/")
+}
+
+func anyChildActive(current string, children []ui.NavItem) bool {
+	for _, c := range children {
+		if isActivePath(current, c.Href) || anyChildActive(current, c.Children) {
+			return true
+		}
+	}
+	return false
+}
+
+func itemActive(current string, it ui.NavItem) bool {
+	return isActivePath(current, it.Href) || anyChildActive(current, it.Children)
+}
+
+func sorted(items []ui.NavItem) []ui.NavItem {
+	out := make([]ui.NavItem, len(items))
+	copy(out, items)
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Order != out[j].Order {
+			return out[i].Order < out[j].Order
+		}
+		return strings.ToLower(out[i].Label) < strings.ToLower(out[j].Label)
+	})
+	for i := range out {
+		out[i].Children = sorted(out[i].Children)
+	}
+	return out
+}
+
+func filterMenubar(items []ui.NavItem) []ui.NavItem {
+	out := make([]ui.NavItem, 0, len(items))
+	for _, item := range items {
+		if !item.OnMenubar {
+			continue
+		}
+		clone := item                   
+		clone.Children = filterMenubar(item.Children)
+		if clone.Href != "" || len(clone.Children) > 0 {
+			out = append(out, clone)
+		}
+	}
+	return out
+}
+
+func filterSidebar(items []ui.NavItem) []ui.NavItem {
+	out := make([]ui.NavItem, 0, len(items))
+	for _, item := range items {
+		if !item.OnSidebar {
+			continue
+		}
+		clone := item
+		clone.Children = filterSidebar(item.Children)
+		if clone.Href != "" || len(clone.Children) > 0 {
+			out = append(out, clone)
+		}
+	}
+	return out
+}
+
+
+templ menubar(items []ui.NavItem, current string) {
+	<ul class="menu menu-horizontal gap-3">
+		for _, item := range sorted(filterMenubar(items)) {
+			{{
+				active := itemActive(current, item)
+				btn := "btn"
+				if active { btn += " btn-active" }
+				aria := ""
+				if active { aria = "page" }
+			}}
+			if len(item.Children) == 0 {
+				if item.Href != "" {
+					<li class="justify-center items-center">
+          <a href={item.Href} class={btn} aria-current={aria}>
+            if item.Icon != nil { 
+              <span class="inline-flex">@item.Icon</span> 
+            }
+          {item.Label}
+          </a>
+          </li>
+				} else {
+					<li>
+            <span class={btn + " btn-ghost"}>
+              if item.Icon != nil { 
+                <span class="inline-flex">@item.Icon</span> 
+              }
+              {item.Label}
+            </span>
+          </li>
+				}
+			} else {
+				// Parent: no href + children => dropdown
+				<li>
+					<div class="dropdown dropdown-end p-0">
+						<div tabindex="0" role="button"
+             class={"btn m-0.5 " + (func() string { if active { return "btn-active" }; return "" }())}>
+              if item.Icon != nil {
+                <span class="inline-flex">@item.Icon</span>
+              }
+              {item.Label}
+            </div>
+						<ul tabindex="0" class="dropdown-content menu z-1 w-fit p-0.5 bg-base-100 rounded-box shadow-sm gap-0.5">
+							for _, child := range sorted(filterMenubar(item.Children)) {
+								{{
+									cActive := itemActive(current, child)
+									cls := "btn "
+									if cActive { cls += "btn-active" }
+								}}
+								if len(child.Children) == 0 {
+									if child.Href != "" {
+										<li>
+                      <a href={child.Href} class={cls}>
+                      if child.Icon != nil { 
+                        <span class="inline-flex">@child.Icon</span> 
+                        }
+                      {child.Label}
+                      </a>
+                    </li>
+									} else {
+										<li class="menu-title">
+                      <span>
+                            if child.Icon != nil { 
+                              <span class="inline-flex">@child.Icon</span> 
+                              }
+                        {child.Label}
+                      </span>
+                    </li>
+									}
+								} else {
+									// nested group inside dropdown
+									<li>
+										<details open={cActive}>
+											<summary class="btn btn-active">{child.Label}</summary>
+											<ul class="menu">
+												for _, grand := range sorted(filterMenubar(child.Children)) {
+													{{
+														gActive := itemActive(current, grand)
+														gcls := ""
+														if gActive { gcls = "active" }
+													}}
+													if grand.Href != "" {
+														<li>
+                            <a href={grand.Href} class={gcls}>
+                            if grand.Icon != nil { 
+                              <span class="inline-flex">@grand.Icon</span> 
+                              }
+                            {grand.Label}
+                            </a></li>
+													} else {
+														<li class="menu-title">
+                              <span>
+                              if grand.Icon != nil { 
+                                <span class="inline-flex">@grand.Icon</span> 
+                                }
+                              {grand.Label}
+                              </span>
+                            </li>
+													}
+												}
+											</ul>
+										</details>
+									</li>
+								}
+							}
+						</ul>
+					</div>
+				</li>
+			}
+		}
+	</ul>
+}
+
+templ sidebar(items []ui.NavItem, current string) {
+	<ul class="menu bg-base-200 min-h-full pt-0.5 pr-0 gap-0.5 w-full ml-0 before:bg-gray-950 before:w-0.5 before:top-0 before:h-full">
+		for _, item := range sorted(filterSidebar(items)) {
+			{{
+				active := itemActive(current, item)
+				cls := "px-0.5 btn w-full "
+				if active { cls += "btn-active" }
+			}}
+			if len(item.Children) == 0 {
+				if item.Href != "" {
+					<li class="w-full">
+            <a href={item.Href} class={cls}>
+            if item.Icon != nil { 
+              <span class="inline-flex">@item.Icon</span> 
+              }
+            {item.Label}
+            </a>
+          </li>
+				} 
+        else {
+					<li class="menu-title w-full">
+          <span>
+          if item.Icon != nil { 
+            <span class="inline-flex">@item.Icon</span> 
+          }
+          {item.Label}
+          </span>
+          </li>
+				}
+			} else {
+				if active {
+					<li class="w-full">
+						<details open>
+							<summary class="btn w-full btn-active">
+                if item.Icon != nil { 
+                  <span class="inline-flex">@item.Icon</span> 
+                }
+                {item.Label}
+              </summary>
+							@sidebar(item.Children, current)
+						</details>
+					</li>
+				} else {
+					<li class="w-full">
+						<details>
+							<summary class="btn w-full">
+                if item.Icon != nil { 
+                  <span class="inline-flex">@item.Icon</span> 
+                }
+                {item.Label}
+              </summary>
+							@sidebar(item.Children, current)
+						</details>
+					</li>
+				}
+			}
+		}
+	</ul>
+}
+
+templ Navbar(appTitle string, app templ.Component, navItems []ui.NavItem, current string) {
+	<div class="drawer lg:drawer-open">
+		<input id="app-drawer" type="checkbox" class="drawer-toggle"/>
+		<div class="drawer-content flex flex-col">
+			<!-- Top Navbar -->
+			<div class="navbar bg-base-300 w-full">
+				<div class="flex-none lg:hidden">
+					<label for="app-drawer" aria-label="open sidebar" class="btn">
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+						</svg>
+					</label>
+				</div>
+				<div class="mx-2 flex-1 px-2">{appTitle}</div>
+				<div class="hidden lg:flex">
+					@menubar(navItems, current)
+				</div>
+			</div>
+			<main class="p-4">
+				@app
+			</main>
+		</div>
+		<div class="drawer-side w-fit">
+			<label for="app-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+			@sidebar(navItems, current)
+		</div>
+	</div>
+}

@@ -1,0 +1,24 @@
+package pages
+
+import (
+	"app/internal/ui"
+	"app/internal/views/layout"
+)
+
+templ Index(appTitle string, app templ.Component, navItems []ui.NavItem, current string) {
+	<!DOCTYPE html>
+	<html lang="en" data-theme="nord">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>App</title>
+			<link rel="stylesheet" href="/public/style.css"/>
+			<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+		</head>
+		<body class="min-h-screen">
+			<div>
+				@layout.Navbar(appTitle, app, navItems, current)
+			</div>
+		</body>
+	</html>
+}
