@@ -1,6 +1,6 @@
 # GOTH-Stack App Template 
 
-A minimal server-rendered application with Go using **templ**, **HTMX**, and **Tailwind**, running entirely in Docker with a Postgres database.
+A minimal server-rendered application with Go using **templ**, **HTMX**, and **Tailwind**.
 
 ## Stack
 - Go 1.25
